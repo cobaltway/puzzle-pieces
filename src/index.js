@@ -3,7 +3,7 @@ import FloodFill from 'q-floodfill';
 
 const RANDOM = {
   midpoint: 0.1,
-  lineVariation: 0.25
+  lineVariation: 0.025
 };
 
 const random = (min = 0, max = 1) => (Math.random() * (max - min)) + min;
