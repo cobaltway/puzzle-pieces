@@ -1,9 +1,12 @@
 import './curve';
 import FloodFill from 'q-floodfill';
 
-const random = (min = 0, max = 1) => (Math.random() * (max - min)) + min;
+const RANDOM = {
+  midpoint: 0.1,
+  lineVariation: 0.25
+};
 
-const invertPoints = (points, invert = true) => invert ? points.map((e, i, arr) => i % 2 ? arr[i - 1] : arr[i + 1]) : points;
+const random = (min = 0, max = 1) => (Math.random() * (max - min)) + min;
 
 const getPixelFromData = (data, x, y, width) => {
   const index = ((y * (width * 4)) + (x * 4));
@@ -18,31 +21,25 @@ const createCanvas = (image, width, height) => {
 };
 
 const createLines = (ctx, [[x, y], [width, height], [cols, lines]], invert = false) => {
-  if (y >= height * lines) {
-    return;
-  }
+  if (y >= height * lines) return;
 
   const size = Math.min(width, height);
-  const midpoint = random(0.4, 0.6);
+  const midpoint = random(0.5 - RANDOM.midpoint, 0.5 + RANDOM.midpoint);
   const direction = random() > 0.5 ? 1 : -1;
 
   ctx.moveTo(invert ? y : x, invert ? x : y);
-  ctx.curve(invertPoints([
-    x,
-    y,
-    x + ((midpoint - 0.1) * size),
-    y + (size * random(-0.025, 0.025)),
-    x + ((midpoint - 0.125) * size),
-    y + (0.15 * size * direction),
-    x + (midpoint * size),
-    y + (0.25 * size * direction),
-    x + ((midpoint + 0.125) * size),
-    y + (0.15 * size * direction),
-    x + ((midpoint + 0.1) * size),
-    y + (size * random(-0.025, 0.025)),
-    x + width,
-    y
-  ], invert), 0.5, 100);
+
+  let points = [
+    0, 0,
+    (midpoint - 0.1) * size, size * random(RANDOM.lineVariation * -1, RANDOM.lineVariation),
+    (midpoint - 0.125) * size, 0.15 * size * direction,
+    midpoint * size, 0.25 * size * direction,
+    (midpoint + 0.125) * size, 0.15 * size * direction,
+    (midpoint + 0.1) * size, size * random(RANDOM.lineVariation * -1, RANDOM.lineVariation),
+    width, 0
+  ].map((p, i) => i % 2 ? y + p : x + p);
+  if (invert) points = points.map((e, i, arr) => i % 2 ? arr[i - 1] : arr[i + 1]);
+  ctx.curve(points, 0.5, 100);
 
   createLines(ctx, [[x < (cols * width) ? x + width : 0, x < (cols * width) ? y : y + height], [width, height], [cols, lines]], invert);
 };
@@ -73,12 +70,12 @@ export default ({image, cols = 24, lines = 16}) => {
       floodFill.fill('rgba(0,0,0,.5)', Math.floor((x * width) + (width / 2)), Math.floor((y * height) + (height / 2)), 0);
       const pixels = Array.from(floodFill.modifiedPixels).map(p => p.split('|'));
 
-      const area = [Math.min(...pixels.map(p => p[0])), Math.min(...pixels.map(p => p[1]))];
+      const bounds = [Math.min(...pixels.map(p => p[0])), Math.min(...pixels.map(p => p[1]))];
 
       pixels.forEach(([x, y]) => {
         const pixel = getPixelFromData(imageData, x, y, image.width);
         piecesCtx.fillStyle = `rgba(${pixel[0]},${pixel[1]},${pixel[2]},${pixel[3]})`;
-        piecesCtx.fillRect(x - area[0], y - area[1], 1, 1);
+        piecesCtx.fillRect(x - bounds[0], y - bounds[1], 1, 1);
       });
 
       pieces.push(piecesCtx.canvas.toDataURL());
