@@ -1,24 +1,121 @@
-/* eslint-disable */
-/*	Curve extension for canvas 2.3.1
+/*!	Curve function for canvas 2.3.1
  *	Epistemex (c) 2013-2014
  *	License: MIT
  */
-CanvasRenderingContext2D.prototype.curve = CanvasRenderingContext2D.prototype.curve || function (h, t, f, c) {
-  t = (typeof t === 'number') ? t : 0.5; f = f ? f : 25; var j; var d = 1; var e = h.length; var n = 0; var m = (e - 2) * f + 2 + (c ? 2 * f : 0); var k = new Float32Array(m); var a = new Float32Array((f + 2) * 4); var b = 4; j = h.slice(0); if (c) {
-    j.unshift(h[e - 1]); j.unshift(h[e - 2]); j.push(h[0], h[1]);
-  } else {
-    j.unshift(h[1]); j.unshift(h[0]); j.push(h[e - 2], h[e - 1]);
-  }a[0] = 1; for (;d < f; d++) {
-    var o = d / f; var p = o * o; var r = p * o; var q = r * 2; var s = p * 3; a[b++] = q - s + 1; a[b++] = s - q; a[b++] = r - 2 * p + o; a[b++] = r - p;
-  }a[++b] = 1; g(j, a, e); if (c) {
-    j = []; j.push(h[e - 4], h[e - 3], h[e - 2], h[e - 1]); j.push(h[0], h[1], h[2], h[3]); g(j, a, 4);
-  } function g(G, z, B) {
-    for (var A = 2, H; A < B; A += 2) {
-      var C = G[A]; var D = G[A + 1]; var E = G[A + 2]; var F = G[A + 3]; var I = (E - G[A - 2]) * t; var J = (F - G[A - 1]) * t; var K = (G[A + 4] - C) * t; var L = (G[A + 5] - D) * t; for (H = 0; H < f; H++) {
-        var u = H << 2; var v = z[u]; var w = z[u + 1]; var x = z[u + 2]; var y = z[u + 3]; k[n++] = v * C + w * E + x * I + y * K; k[n++] = v * D + w * F + x * J + y * L;
-      }
-    }
-  }e = c ? 0 : h.length - 2; k[n++] = h[e]; k[n] = h[e + 1]; for (d = 0, e = k.length; d < e; d += 2) {
-    this.lineTo(k[d], k[d + 1]);
-  } return k;
-};
+
+/**
+ * Draws a cardinal spline through given point array. Points must be arranged
+ * as: [x1, y1, x2, y2, ..., xn, yn]. It adds the points to the current path.
+ *
+ * The method continues previous path of the context. If you don't want that
+ * then you need to use moveTo() with the first point from the input array.
+ *
+ * The points for the cardinal spline are returned as a new array.
+ *
+ * @param {CanvasRenderingContext2D} ctx - context to use
+ * @param {Array} points - point array
+ * @param {Number} [tension=0.5] - tension. Typically between [0.0, 1.0] but can be exceeded
+ * @param {Number} [numOfSeg=20] - number of segments between two points (line resolution)
+ * @param {Boolean} [close=false] - Close the ends making the line continuous
+ * @returns {Float32Array} New array with the calculated points that was added to the path
+ */
+export default function curve(ctx, points, tension, numOfSeg, close) {
+
+	'use strict';
+
+	// options or defaults
+	tension = (typeof tension === 'number') ? tension : 0.5;
+	numOfSeg = numOfSeg ? numOfSeg : 25;
+
+	var pts,									// for cloning point array
+		i = 1,
+		l = points.length,
+		rPos = 0,
+		rLen = (l-2) * numOfSeg + 2 + (close ? 2 * numOfSeg: 0),
+		res = new Float32Array(rLen),
+		cache = new Float32Array((numOfSeg + 2) * 4),
+		cachePtr = 4;
+
+	pts = points.slice(0);
+
+	if (close) {
+		pts.unshift(points[l - 1]);				// insert end point as first point
+		pts.unshift(points[l - 2]);
+		pts.push(points[0], points[1]); 		// first point as last point
+	}
+	else {
+		pts.unshift(points[1]);					// copy 1. point and insert at beginning
+		pts.unshift(points[0]);
+		pts.push(points[l - 2], points[l - 1]);	// duplicate end-points
+	}
+
+	// cache inner-loop calculations as they are based on t alone
+	cache[0] = 1;								// 1,0,0,0
+
+	for (; i < numOfSeg; i++) {
+
+		var st = i / numOfSeg,
+			st2 = st * st,
+			st3 = st2 * st,
+			st23 = st3 * 2,
+			st32 = st2 * 3;
+
+		cache[cachePtr++] =	st23 - st32 + 1;	// c1
+		cache[cachePtr++] =	st32 - st23;		// c2
+		cache[cachePtr++] =	st3 - 2 * st2 + st;	// c3
+		cache[cachePtr++] =	st3 - st2;			// c4
+	}
+
+	cache[++cachePtr] = 1;						// 0,1,0,0
+
+	// calc. points
+	parse(pts, cache, l);
+
+	if (close) {
+		//l = points.length;
+		pts = [];
+		pts.push(points[l - 4], points[l - 3], points[l - 2], points[l - 1]); // second last and last
+		pts.push(points[0], points[1], points[2], points[3]); // first and second
+		parse(pts, cache, 4);
+	}
+
+	function parse(pts, cache, l) {
+
+		for (var i = 2, t; i < l; i += 2) {
+
+			var pt1 = pts[i],
+				pt2 = pts[i+1],
+				pt3 = pts[i+2],
+				pt4 = pts[i+3],
+
+				t1x = (pt3 - pts[i-2]) * tension,
+				t1y = (pt4 - pts[i-1]) * tension,
+				t2x = (pts[i+4] - pt1) * tension,
+				t2y = (pts[i+5] - pt2) * tension;
+
+			for (t = 0; t < numOfSeg; t++) {
+
+				var c = t << 2, //t * 4;
+
+					c1 = cache[c],
+					c2 = cache[c+1],
+					c3 = cache[c+2],
+					c4 = cache[c+3];
+
+				res[rPos++] = c1 * pt1 + c2 * pt3 + c3 * t1x + c4 * t2x;
+				res[rPos++] = c1 * pt2 + c2 * pt4 + c3 * t1y + c4 * t2y;
+			}
+		}
+	}
+
+	// add last point
+	l = close ? 0 : points.length - 2;
+	res[rPos++] = points[l];
+	res[rPos] = points[l+1];
+
+	// add lines to path
+	for(i = 0, l = res.length; i < l; i += 2)
+		ctx.lineTo(res[i], res[i+1]);
+
+	return res;
+}

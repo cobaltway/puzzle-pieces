@@ -1,5 +1,5 @@
-import './curve';
-import FloodFill from 'q-floodfill';
+const FloodFill = require('q-floodfill');
+const curve = require('curve').default;
 
 const RANDOM = {
   midpoint: 0.1,
@@ -39,12 +39,12 @@ const createLines = (ctx, [[x, y], [width, height], [cols, lines]], invert = fal
     width, 0
   ].map((p, i) => i % 2 ? y + p : x + p);
   if (invert) points = points.map((e, i, arr) => i % 2 ? arr[i - 1] : arr[i + 1]);
-  ctx.curve(points, 0.5, 100);
+  curve(ctx, points, 0.5, 100);
 
   createLines(ctx, [[x < (cols * width) ? x + width : 0, x < (cols * width) ? y : y + height], [width, height], [cols, lines]], invert);
 };
 
-export default ({image, cols = 24, lines = 16}) => {
+export default ({image, cols = 6, lines = 6}, callback) => {
   const width = image.width / cols;
   const height = image.height / lines;
 
@@ -60,14 +60,13 @@ export default ({image, cols = 24, lines = 16}) => {
   const edges = edgeCtx.getImageData(0, 0, image.width, image.height);
 
   const {data: imageData} = imageCtx.getImageData(0, 0, image.width, image.height);
-  const pieces = [];
-  Array.from(Array(cols).keys()).forEach(x => {
-    Array.from(Array(lines).keys()).forEach(y => {
+  for (let x = 0; x < cols; x++)
+    for (let y = 0; y < lines; y++) {
       piecesCtx.clearRect(0, 0, width * 1.5, height * 1.5);
 
       const floodFill = new FloodFill(edges);
       floodFill.collectModifiedPixels = true;
-      floodFill.fill('rgba(0,0,0,.5)', Math.floor((x * width) + (width / 2)), Math.floor((y * height) + (height / 2)), 0);
+      floodFill.fill('rgba(0,0,0,1)', Math.floor((x * width) + (width / 2)), Math.floor((y * height) + (height / 2)), 0);
       const pixels = Array.from(floodFill.modifiedPixels).map(p => p.split('|'));
 
       const bounds = [Math.min(...pixels.map(p => p[0])), Math.min(...pixels.map(p => p[1]))];
@@ -78,9 +77,6 @@ export default ({image, cols = 24, lines = 16}) => {
         piecesCtx.fillRect(x - bounds[0], y - bounds[1], 1, 1);
       });
 
-      pieces.push(piecesCtx.canvas.toDataURL());
-    });
-  });
-
-  return pieces;
+      callback(piecesCtx.canvas, {x, y});
+    }
 };

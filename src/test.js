@@ -2,16 +2,15 @@
 
 import lib from './index';
 
-const el = document.createElement('img');
-el.src = 'test.png';
-el.onload = () => {
-  const pieces = lib({
-    image: el
-  });
-
-  pieces.forEach(p => {
-    const el = document.createElement('img');
-    el.src = p;
-    document.getElementById('app').appendChild(el);
+const image = document.createElement('img');
+image.src = 'test.jpg';
+image.onload = () => {
+  const pieces = [];
+  lib({image}, (piece, {x, y}) => {
+    if (!pieces[x]) pieces[x] = [];
+    pieces[x][y] = piece.toDataURL();
+    const image = document.createElement('img');
+    image.src = pieces[x][y];
+    document.getElementById('app').appendChild(image);
   });
 };
