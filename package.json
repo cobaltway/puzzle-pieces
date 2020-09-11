@@ -7,20 +7,21 @@
   },
   "devDependencies": {
     "@poi/plugin-eslint": "^12.0.0",
+    "bili": "^3.0.10",
     "eslint": "^5.9.0",
     "eslint-config-xo": "^0.25.0",
-    "poi": "^12.4.2",
-    "bili": "^3.0.10"
+    "poi": "^12.4.2"
   },
   "installConfig": {
     "pnp": true
   },
   "dependencies": {
-    "js-spline": "^1.0.1",
     "q-floodfill": "^1.1.1"
   },
   "license": "MIT",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "main": "./dist/index.min.js",
   "version": "0.0.1",
   "author": "cobaltway"
