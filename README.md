@@ -22,14 +22,11 @@ import puzzlePieces from 'puzzle-pieces';
 const image = document.createElement('img');
 image.src = 'test.jpg';
 image.onload = () => {
-
-  const pieces = [];
+  
   puzzlePieces({image, col: 10, lines: 10}, (piece, {x, y}) => {
-    if (!pieces[x]) pieces[x] = [];
-    pieces[x][y] = piece.toDataURL();
     const image = document.createElement('img');
-    image.src = pieces[x][y];
-    document.getElementById('app').appendChild(image);
+    image.src = piece.toDataURL();
+    document.body.appendChild(image);
   });
 
 };
